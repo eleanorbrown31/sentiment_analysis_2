@@ -1,7 +1,5 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
 import numpy as np
 import re
 import time
@@ -100,7 +98,7 @@ def load_enhanced_dataset():
         
         # Educational examples
         {"text": "Brilliant teacher who explains clearly", "sentiment": 1},
-        {"text": "Confusing lectures and poor organization", "sentiment": 0},
+        {"text": "Confusing lectures and poor organisation", "sentiment": 0},
         {"text": "Course material is engaging and relevant", "sentiment": 1},
         {"text": "Outdated content and boring assignments", "sentiment": 0},
         {"text": "Helpful feedback and fair grading", "sentiment": 1},
@@ -108,7 +106,7 @@ def load_enhanced_dataset():
         {"text": "Interactive sessions that enhance learning", "sentiment": 1},
         {"text": "Passive teaching style puts me to sleep", "sentiment": 0},
         {"text": "Well-structured curriculum", "sentiment": 1},
-        {"text": "Disorganized and poorly planned", "sentiment": 0},
+        {"text": "Disorganised and poorly planned", "sentiment": 0},
         
         # Travel examples
         {"text": "Breathtaking views and comfortable hotel", "sentiment": 1},
@@ -173,7 +171,7 @@ class CustomSentimentModel:
         """Enhanced feature extraction"""
         features = {}
         
-        # Normalize text
+        # Normalise text
         text_clean = re.sub(r'[^\w\s!?]', '', text.lower())
         words = [word for word in text_clean.split() if len(word) > 2]
         
@@ -233,7 +231,7 @@ class CustomSentimentModel:
         self.training_data = [{"text": text, "sentiment": label} for text, label in zip(X_train, y_train)]
         self.create_vocabulary()
         
-        # Initialize weights
+        # Initialise weights
         self.word_weights = {'__bias__': 0}
         for word in self.vocabulary:
             self.word_weights[word] = np.random.uniform(-0.1, 0.1)
@@ -267,11 +265,11 @@ class CustomSentimentModel:
                 
                 total_loss += error * error
             
-            # Regularization
-            regularization_rate = 0.01
+            # Regularisation
+            regularisation_rate = 0.01
             for word in self.word_weights:
                 if word != '__bias__':
-                    self.word_weights[word] *= (1 - regularization_rate * learning_rate)
+                    self.word_weights[word] *= (1 - regularisation_rate * learning_rate)
             
             # Validation
             val_predictions = self.predict(X_val)
@@ -333,34 +331,6 @@ def plot_confusion_matrix(cm, title="Confusion Matrix"):
     fig.update_layout(width=400, height=300)
     return fig
 
-def plot_roc_curve(fpr, tpr, auc_score, title="ROC Curve"):
-    """Create ROC curve plot"""
-    fig = go.Figure()
-    
-    fig.add_trace(go.Scatter(
-        x=fpr, y=tpr,
-        mode='lines',
-        name=f'ROC Curve (AUC = {auc_score:.3f})',
-        line=dict(color='blue', width=2)
-    ))
-    
-    fig.add_trace(go.Scatter(
-        x=[0, 1], y=[0, 1],
-        mode='lines',
-        name='Random Classifier',
-        line=dict(color='red', dash='dash', width=1)
-    ))
-    
-    fig.update_layout(
-        title=title,
-        xaxis_title='False Positive Rate',
-        yaxis_title='True Positive Rate',
-        width=500, height=400,
-        showlegend=True
-    )
-    
-    return fig
-
 def plot_metrics_comparison(custom_metrics, sklearn_metrics):
     """Create a comparison chart of model metrics"""
     metrics_names = ['Accuracy', 'Precision', 'Recall', 'F1-Score']
@@ -395,7 +365,7 @@ def plot_metrics_comparison(custom_metrics, sklearn_metrics):
     
     return fig
 
-# Initialize session state
+# Initialise session state
 if 'custom_model' not in st.session_state:
     st.session_state.custom_model = CustomSentimentModel()
 if 'sklearn_model' not in st.session_state:
@@ -511,7 +481,7 @@ with tab1:
                 # Train scikit-learn model
                 status_text.text("Training Scikit-Learn Model...")
                 
-                # Create TF-IDF vectorizer
+                # Create TF-IDF vectoriser
                 vectorizer = TfidfVectorizer(max_features=1000, stop_words='english', ngram_range=(1, 2))
                 X_train_vec = vectorizer.fit_transform(splits['X_train'])
                 X_val_vec = vectorizer.transform(splits['X_val'])
@@ -529,7 +499,7 @@ with tab1:
             st.success("✅ Both models trained successfully!")
     
     with col2:
-        # Training progress visualization
+        # Training progress visualisation
         if st.session_state.training_history:
             st.markdown("**Custom Model Training Progress:**")
             
@@ -572,7 +542,7 @@ with tab2:
             "Terrible product, completely useless and overpriced garbage.",
             "The restaurant had okay food but service was disappointing.",
             "Love this app! So user-friendly and helpful for daily tasks.",
-            "Boring presentation with unclear examples and poor organization."
+            "Boring presentation with unclear examples and poor organisation."
         ]
         
         col1, col2 = st.columns([2, 1])
@@ -657,12 +627,12 @@ with tab2:
             
             **Model Differences**: 
             - Custom model uses simple word weights
-            - Scikit-Learn uses TF-IDF + advanced optimization
+            - Scikit-Learn uses TF-IDF + advanced optimisation
             
             **Why might they differ?**
             - Different feature extraction methods
             - Different training algorithms
-            - Different regularization techniques
+            - Different regularisation techniques
             """)
     else:
         st.warning("⚠️ Please train the models first in the 'Data & Training' tab!")
@@ -815,7 +785,7 @@ with tab4:
         st.subheader("⚖️ Precision vs Recall Trade-off")
         
         st.markdown("""
-        **The Fundamental Trade-off**: You can't usually maximize both precision and recall simultaneously!
+        **The Fundamental Trade-off**: You can't usually maximise both precision and recall simultaneously!
         
         - **High Precision Strategy**: Be conservative, only predict positive when very confident
         - **High Recall Strategy**: Be aggressive, catch all possible positives
@@ -923,15 +893,15 @@ with tab4:
         
         **Why Scikit-Learn Usually Performs Better:**
         - Uses TF-IDF weighting (considers word importance across documents)
-        - Advanced optimization algorithms (LBFGS, SAG)
-        - Built-in regularization techniques
-        - Years of optimization and testing
+        - Advanced optimisation algorithms (LBFGS, SAG)
+        - Built-in regularisation techniques
+        - Years of optimisation and testing
         
         **Value of the Custom Model:**
         - Transparency: You can see exactly how it works
         - Educational: Demonstrates core ML principles
         - Interpretability: Easy to understand feature weights
-        - Customization: Can be modified for specific needs
+        - Customisation: Can be modified for specific needs
         
         **When to Use Each:**
         - **Custom Model**: Learning, experimentation, full control needed
@@ -944,12 +914,12 @@ with tab4:
             ### For Different Use Cases:
             
             **📧 Email Spam Detection:**
-            - Prioritize **high precision** (few false positives)
+            - Prioritise **high precision** (few false positives)
             - Better to miss some spam than block important emails
             - Threshold: ~0.7-0.8
             
             **🏥 Medical Screening:**
-            - Prioritize **high recall** (catch all potential cases)
+            - Prioritise **high recall** (catch all potential cases)
             - Better to have false alarms than miss diagnoses
             - Threshold: ~0.2-0.3
             
@@ -978,7 +948,7 @@ with st.sidebar:
     - **ROC Curves & AUC**
     - **Feature Importance**
     - **Model Comparison**
-    - **TF-IDF Vectorization**
+    - **TF-IDF Vectorisation**
     
     ### Next Steps:
     1. Try different thresholds
