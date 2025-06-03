@@ -116,91 +116,140 @@ def calculate_comprehensive_metrics(y_true, y_pred, y_pred_proba=None):
     
     return metrics
 
-def plot_validation_curve_explanation(X_train, y_train, X_val, y_val, vectorizer):
-    """Show why validation set prevents overfitting"""
+def plot_validation_curve_explanation(X_train, y_train, X_val, y_val):
+    """Show why validation set prevents overfitting using vocabulary size"""
     st.subheader("🎓 Understanding Overfitting with Validation Curves")
     
     st.markdown("""
-    **Watch what happens as we make our model more complex:**
-    - Training accuracy keeps improving (model memorizes training data)
-    - Validation accuracy peaks then declines (model stops generalizing)
-    - **The gap shows overfitting!**
+    **Watch what happens as we give our model more vocabulary words to learn from:**
+    - **Few words**: Model can't learn enough (underfitting)
+    - **Too many words**: Model memorizes noise and rare words (overfitting)
+    - **Just right**: Model learns useful patterns that generalize
+    
+    **The validation curve shows us the "sweet spot"!**
     """)
     
-    # Transform data
-    X_train_vec = vectorizer.transform(X_train)
-    X_val_vec = vectorizer.transform(X_val)
-    
-    # Test different regularization strengths (higher C = more complex model)
-    C_values = [0.001, 0.01, 0.1, 1, 10, 100]
+    # Test different vocabulary sizes (this is much more intuitive!)
+    vocab_sizes = [50, 100, 200, 500, 1000, 2000, 5000]
     
     train_scores = []
     val_scores = []
     
     progress_bar = st.progress(0)
+    status_text = st.empty()
     
-    for i, C in enumerate(C_values):
-        model = LogisticRegression(C=C, random_state=42, max_iter=1000)
+    for i, vocab_size in enumerate(vocab_sizes):
+        status_text.text(f"Testing vocabulary size: {vocab_size} words...")
+        
+        # Create vectorizer with specific vocabulary size
+        vectorizer = TfidfVectorizer(
+            max_features=vocab_size,
+            stop_words='english',
+            ngram_range=(1,1)  # Keep it simple - just single words
+        )
+        
+        # Transform data
+        X_train_vec = vectorizer.fit_transform(X_train)
+        X_val_vec = vectorizer.transform(X_val)
+        
+        # Train model
+        model = LogisticRegression(random_state=42, max_iter=1000)
         model.fit(X_train_vec, y_train)
         
+        # Calculate scores
         train_score = model.score(X_train_vec, y_train)
         val_score = model.score(X_val_vec, y_val)
         
         train_scores.append(train_score)
         val_scores.append(val_score)
         
-        progress_bar.progress((i + 1) / len(C_values))
+        progress_bar.progress((i + 1) / len(vocab_sizes))
+    
+    status_text.text("Validation curve complete!")
     
     # Plot validation curve
     fig = go.Figure()
     
     fig.add_trace(go.Scatter(
-        x=C_values,
+        x=vocab_sizes,
         y=train_scores,
         mode='lines+markers',
         name='Training Accuracy',
-        line=dict(color='blue', width=3),
-        marker=dict(size=8)
+        line=dict(color='blue', width=4),
+        marker=dict(size=10, symbol='circle')
     ))
     
     fig.add_trace(go.Scatter(
-        x=C_values,
+        x=vocab_sizes,
         y=val_scores,
         mode='lines+markers',
         name='Validation Accuracy',
-        line=dict(color='red', width=3),
-        marker=dict(size=8)
+        line=dict(color='red', width=4),
+        marker=dict(size=10, symbol='square')
     ))
     
     # Find optimal point
     best_idx = np.argmax(val_scores)
-    fig.add_vline(x=C_values[best_idx], line_dash="dash", line_color="green",
-                  annotation_text="Optimal Complexity")
+    optimal_vocab = vocab_sizes[best_idx]
+    
+    fig.add_vline(x=optimal_vocab, line_dash="dash", line_color="green", line_width=3,
+                  annotation_text=f"Sweet Spot: {optimal_vocab} words")
+    
+    # Add regions
+    fig.add_vrect(x0=0, x1=200, fillcolor="yellow", opacity=0.2, annotation_text="Underfitting")
+    fig.add_vrect(x0=2000, x1=5000, fillcolor="orange", opacity=0.2, annotation_text="Overfitting")
     
     fig.update_layout(
-        title='Validation Curve: Why We Need Validation Data',
-        xaxis_title='Model Complexity (C parameter)',
+        title='Validation Curve: Finding the Right Vocabulary Size',
+        xaxis_title='Vocabulary Size (number of words model can learn)',
         yaxis_title='Accuracy',
-        xaxis_type="log",
-        height=400,
-        annotations=[
-            dict(x=0.001, y=0.5, text="Underfitting", showarrow=False, bgcolor="yellow"),
-            dict(x=100, y=0.5, text="Overfitting", showarrow=False, bgcolor="orange")
-        ]
+        height=500,
+        font=dict(size=14)
     )
     
     st.plotly_chart(fig, use_container_width=True)
     
-    with st.expander("🎓 What This Shows"):
+    # Educational explanation
+    col1, col2 = st.columns(2)
+    
+    with col1:
         st.markdown(f"""
-        **Key Insights:**
+        ### 📊 What We Discovered:
         
-        1. **Training accuracy always improves** as model gets more complex
-        2. **Validation accuracy peaks then drops** - this is overfitting!
-        3. **Optimal model** has C={C_values[best_idx]} (validation accuracy: {val_scores[best_idx]:.3f})
-        4. **Without validation data**, we'd pick the most complex model thinking it's best!
+        **Best vocabulary size**: {optimal_vocab} words  
+        **Training accuracy**: {train_scores[best_idx]:.3f}  
+        **Validation accuracy**: {val_scores[best_idx]:.3f}
         
-        **This is why validation data is crucial** - it acts as an "honest judge" of model performance.
+        **🎯 Key Insight**: Training accuracy keeps going up, but validation accuracy peaks and then drops!
+        """)
+    
+    with col2:
+        st.markdown("""
+        ### 🤔 Why This Happens:
+        
+        **Too few words (underfitting)**:
+        - Model can't express complex patterns
+        - Both training and validation scores are low
+        
+        **Too many words (overfitting)**:
+        - Model memorizes rare, meaningless words
+        - Training score high, validation score drops
+        
+        **Just right**:
+        - Model learns useful, generalizable patterns
+        """)
+    
+    with st.expander("🎓 The Big Lesson"):
+        st.markdown(f"""
+        **This is exactly why we need validation data!**
+        
+        - If we only looked at **training accuracy**, we'd think {vocab_sizes[-1]} words is best ({train_scores[-1]:.3f} accuracy)
+        - But the **validation accuracy** tells the truth - it's only {val_scores[-1]:.3f}!
+        - The validation set acts as an "honest judge" that catches overfitting
+        
+        **Without validation data**, we'd build overconfident models that fail in the real world.
+        
+        **Real-world lesson**: Always test your model on data it hasn't seen during training!
         """)
 
 def analyze_misclassified_examples(y_true, y_pred, texts, probabilities):
@@ -380,6 +429,8 @@ if 'training_complete' not in st.session_state:
     st.session_state.training_complete = False
 if 'evaluation_results' not in st.session_state:
     st.session_state.evaluation_results = None
+if 'training_params' not in st.session_state:
+    st.session_state.training_params = None
 
 # App title and description
 st.title("🧠 ML Sentiment Analysis: Virtual Presentation Feedback")
@@ -487,55 +538,124 @@ with tab2:
         
         st.markdown("### 🔧 Training Configuration")
         
+        st.markdown("**Experiment with these simple settings to see how they affect learning:**")
+        
         col1, col2 = st.columns(2)
         
         with col1:
-            max_features = st.slider("Maximum Features (vocabulary size)", 500, 2000, 1000)
-            ngram_range = st.selectbox("N-gram Range", 
-                                     options=[(1,1), (1,2), (1,3)],
-                                     format_func=lambda x: f"Unigrams only" if x==(1,1) else f"Unigrams + Bigrams" if x==(1,2) else "Unigrams + Bigrams + Trigrams")
+            vocab_size = st.slider("📚 Vocabulary Size", 
+                                 min_value=100, max_value=2000, value=1000, step=100,
+                                 help="How many different words can the model learn? More isn't always better!")
+            
+            min_word_freq = st.slider("🔢 Minimum Word Frequency", 
+                                    min_value=1, max_value=5, value=2,
+                                    help="Ignore words that appear fewer than this many times")
         
         with col2:
-            C_value = st.slider("Regularization Strength (C)", 0.01, 10.0, 1.0)
-            st.caption("Higher = more complex model")
+            training_size = st.slider("🎯 Training Set Size", 
+                                    min_value=0.3, max_value=1.0, value=1.0, step=0.1,
+                                    help="Use this fraction of available training data")
+            
+            remove_stop_words = st.checkbox("🚫 Remove Stop Words", value=True,
+                                          help="Remove common words like 'the', 'and', 'is'")
+        
+        # Show what these settings mean
+        with st.expander("💡 What do these settings do?"):
+            st.markdown(f"""
+            **📚 Vocabulary Size ({vocab_size} words):**
+            - Too small: Model can't learn enough patterns (underfitting)
+            - Too large: Model memorizes rare words (overfitting)
+            
+            **🔢 Minimum Word Frequency ({min_word_freq}):**
+            - Higher numbers ignore rare words that might be noise
+            - Lower numbers include more words but risk overfitting
+            
+            **🎯 Training Set Size ({training_size:.0%}):**
+            - More data usually means better learning
+            - But shows diminishing returns after a point
+            
+            **🚫 Stop Words ({'Removed' if remove_stop_words else 'Included'}):**
+            - Common words like 'the', 'and' usually don't help with sentiment
+            - But sometimes they matter in context!
+            """)
         
         if st.button("🚀 Train Model", type="primary"):
             with st.spinner("Training model..."):
                 
-                # Create vectorizer
+                # Use specified fraction of training data
+                if training_size < 1.0:
+                    train_sample_size = int(len(splits['X_train']) * training_size)
+                    X_train_sample = splits['X_train'][:train_sample_size]
+                    y_train_sample = splits['y_train'][:train_sample_size]
+                else:
+                    X_train_sample = splits['X_train']
+                    y_train_sample = splits['y_train']
+                
+                # Create vectorizer with chosen settings
                 vectorizer = TfidfVectorizer(
-                    max_features=max_features,
-                    stop_words='english',
-                    ngram_range=ngram_range
+                    max_features=vocab_size,
+                    stop_words='english' if remove_stop_words else None,
+                    min_df=min_word_freq,
+                    ngram_range=(1,1)  # Keep it simple - just single words
                 )
                 
                 # Transform training data
-                X_train_vec = vectorizer.fit_transform(splits['X_train'])
+                X_train_vec = vectorizer.fit_transform(X_train_sample)
                 
-                # Train model
-                model = LogisticRegression(C=C_value, random_state=42, max_iter=1000)
-                model.fit(X_train_vec, splits['y_train'])
+                # Train model (keep it simple - no regularization parameter)
+                model = LogisticRegression(random_state=42, max_iter=1000)
+                model.fit(X_train_vec, y_train_sample)
                 
                 # Store in session state
                 st.session_state.model = model
                 st.session_state.vectorizer = vectorizer
                 st.session_state.training_complete = True
+                st.session_state.training_params = {
+                    'vocab_size': vocab_size,
+                    'min_word_freq': min_word_freq,
+                    'training_size': training_size,
+                    'remove_stop_words': remove_stop_words,
+                    'actual_training_examples': len(X_train_sample)
+                }
             
-            st.success("✅ Model trained successfully!")
+            st.success(f"✅ Model trained successfully using {len(X_train_sample)} examples!")
         
         # Show validation curve if model is trained
         if st.session_state.training_complete:
             plot_validation_curve_explanation(
                 splits['X_train'], splits['y_train'],
-                splits['X_val'], splits['y_val'],
-                st.session_state.vectorizer
+                splits['X_val'], splits['y_val']
             )
             
             # Show feature importance
             st.subheader("🔍 What Did the Model Learn?")
             
+            # Show training summary
+            params = st.session_state.training_params
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown(f"""
+                ### 📋 Training Summary:
+                - **Training examples used**: {params['actual_training_examples']}
+                - **Vocabulary size**: {params['vocab_size']} words
+                - **Min word frequency**: {params['min_word_freq']}
+                - **Stop words**: {'Removed' if params['remove_stop_words'] else 'Included'}
+                """)
+            
+            with col2:
+                # Quick validation check
+                X_val_vec = st.session_state.vectorizer.transform(splits['X_val'])
+                val_accuracy = st.session_state.model.score(X_val_vec, splits['y_val'])
+                st.metric("Validation Accuracy", f"{val_accuracy:.3f}")
+                st.caption("How well the model performs on unseen validation data")
+            
+            # Feature importance analysis
             feature_names = st.session_state.vectorizer.get_feature_names_out()
             coefficients = st.session_state.model.coef_[0]
+            
+            st.markdown("### 📊 Most Important Words the Model Learned:")
             
             # Create feature importance dataframe
             feature_importance = pd.DataFrame({
@@ -546,16 +666,32 @@ with tab2:
             col1, col2 = st.columns(2)
             
             with col1:
-                st.markdown("**Most Positive Words:**")
-                positive_features = feature_importance[feature_importance['coefficient'] > 0].head(10)
+                st.markdown("**🟢 Most Positive Words:**")
+                positive_features = feature_importance[feature_importance['coefficient'] > 0].head(8)
                 for _, row in positive_features.iterrows():
                     st.markdown(f"• **{row['feature']}**: +{row['coefficient']:.3f}")
+                st.caption("Words that make the model predict 'positive feedback'")
             
             with col2:
-                st.markdown("**Most Negative Words:**")
-                negative_features = feature_importance[feature_importance['coefficient'] < 0].head(10)
+                st.markdown("**🔴 Most Negative Words:**")
+                negative_features = feature_importance[feature_importance['coefficient'] < 0].head(8)
                 for _, row in negative_features.iterrows():
                     st.markdown(f"• **{row['feature']}**: {row['coefficient']:.3f}")
+                st.caption("Words that make the model predict 'negative feedback'")
+            
+            # Show vocabulary size impact
+            actual_vocab = len(feature_names)
+            with st.expander(f"🔍 Vocabulary Analysis ({actual_vocab} words actually used)"):
+                st.markdown(f"""
+                **You set max vocabulary to {params['vocab_size']} words, but the model actually uses {actual_vocab} words.**
+                
+                This happens because:
+                - Words appearing less than {params['min_word_freq']} times were filtered out
+                - {'Stop words were removed' if params['remove_stop_words'] else 'Stop words were included'}
+                - The dataset might not have enough unique words to reach the maximum
+                
+                **Try changing your settings** to see how vocabulary size affects the model's performance!
+                """)
 
 # Tab 3: Testing & Analysis
 with tab3:
